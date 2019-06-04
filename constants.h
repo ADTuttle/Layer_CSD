@@ -11,19 +11,16 @@
 // General options
 
 #define details 0 //if true, will show how many iterations were necessary for each newton solve, and the residual
-#define mid_points_exct 0
-#define one_point_exct 0 //if true, triggers SD at origin
-#define plane_wave_exct 1 //if true, initiates a uniform plane wave
 #define Profiling_on 1 //Turns timing of functions on/off.
 #define trecordstep 0.5 //determines how often to record
 #define save_one_var 0 //Instead of saving all 14 vars, save just 1 (specified in write_data)
 #define start_at_steady 1 //Start at steady state?
+#define spatially_uniform  1 //if true, all initial values and parameters are spatially uniform
+
 
 
 //Solver Type Options
-#define use_en_deriv 1 //if true, will use the derivative of the electroneutrality condition for the system of equations
-#define separate_vol 1 //if true, will solve c,phi separate from alpha.
-#define Linear_Diffusion 0 //Changes to a linear discretization of electrodiffusion.
+#define use_multigrid 0 //Uses multigrid, speedup for sizes over 64x64(works on layers seperately)
 #define Predictor 0  // Turns on predictor. Adaptive single point estimated update
 #define width_size  1 //Number of up,down,left,right neighbors to pair in the predictor.
 #define Max_Grid_Refine 256 // Max number of time steps to refine in grid predictor
@@ -48,8 +45,7 @@ static const PetscReal DExtraMult[3] = {0.0,1.0,1.0};
 
 //number of variables to be solved for at each grid point
 //#define  Nv  ((Ni+2)*Nc-1) //version if volume is included
-//#define  Nv  ((Ni+1)*Nc) //version if volume is excluded
-#define Nv  (((Ni+2)*Nc-1)*(!separate_vol)+((Ni+1)*Nc)*separate_vol)  //combining the above two with the separate_vol
+#define  Nv  ((Ni+1)*Nc) //version if volume is excluded
 
 //Newton solve parameters
 #define  itermax  20      //maximum Newton iterations allowed
@@ -80,9 +76,6 @@ static const PetscReal cbath[4]={140*1e-3,3.4*1e-3,120*1e-3,1e-8}; //Na, K, Cl, 
 #define Lexct 0.05          //Length of region for excitation in each direction
 //#define Lexct 0.025          //Length of region for excitation in each direction
 
-//initial state setup
-#define rest_state  1        //if true, membrane parameters are set so that the initial voltages and concentrations are at a rest state
-#define spatially_uniform  1 //if true, all initial values and parameters are spatially uniform
 
 
 //set "relaxed" volume fractions and initial volume fractions
@@ -126,7 +119,7 @@ static const PetscReal alpha0[2]={alphaon,alphaog};
 #define glut_A  50e-3 //500e-3 //500e-5 //100e-5//500e-5 //(500e-3) //500       //Release rate in mmol/cm^3/sec
 #define glut_eps 22.99e-6//5e-3//5e-6 //5e-3      //Small scaling factor muMol converted to millMol
 #define glut_Rg (1e-3)//(1.0/6)      // Steady state glia/neuron concentration ratio
-#define glut_Bg (1.0/42)//(1.0/20)//(1.0/42)//8e-2             //Decay rate(glia->neurons) in 1/sec
+#define glut_Bg (1.0/84)//(1.0/20)//(1.0/42)//8e-2             //Decay rate(glia->neurons) in 1/sec
 #define pNaGl_n 0 //(3e-5*RTFC/FC)              //Na-Glu transporter permeability
 #define pNaGl_g (3e-5*RTFC/FC)              //Na-Glu transporter permeability
 #define pHratio 2.0//0.5             //Ratio of extracell to intracell pH(for transporter)
@@ -135,12 +128,12 @@ static const PetscReal alpha0[2]={alphaon,alphaog};
 //#define glut_Kg 99.940035978412951            //Neuronal fraction for glial reaction
 
 
-#define glut_gamma 0.2    //Reabsorbtion ratio (arbitrary)
-#define glut_Bn (1.0/21) //(1.0/10)//(1.0/42)//10e-2//e-2              //Decay rate(extracell->intracell) in 1/sec
+#define glut_gamma 0.1    //Reabsorbtion ratio (arbitrary)
+#define glut_Bn (1.0/42) //(1.0/10)//(1.0/42)//10e-2//e-2              //Decay rate(extracell->intracell) in 1/sec
 #define glut_Re (1e-3) //(1e-4/6)         // Steady state extracell/neuron concentration ratio
 
 // NMDA glutamate interaction
-static const PetscReal Desensitize[3] = {0.1,0.01};//{.30,0.1};//{.33,.16}; //{0.2,0.02};//{0.33,0.01}; // In the NMDA receptor it becomes desensitized over time
+static const PetscReal Desensitize[3] = {0.0,0.0};//{0.1,0.01}; // In the NMDA receptor it becomes desensitized over time
 
 
 // Data Structures

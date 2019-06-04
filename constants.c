@@ -62,24 +62,9 @@ PetscErrorCode init_simstate(Vec state,struct SimState *state_vars,struct AppCtx
     ierr = ISCreateGeneral(PETSC_COMM_WORLD,Nx*Ny*Nz*Nc,phi_ind,PETSC_COPY_VALUES,&state_vars->phi_ind); CHKERRQ(ierr);
 
     free(phi_ind);free(c_ind);
-    if(!separate_vol) {
-        PetscInt *al_ind = (PetscInt *) malloc(sizeof(PetscInt)*Nx*Ny*Nz*(Nc-1));
-        for (z = 0; z < Nz; z++) {
-            for (y = 0; y < Ny; y++) {
-                for (x = 0; x < Nx; x++) {
-                    for (comp = 0; comp < Nc - 1; comp++){
-                        al_ind[al_index(x,y,z,comp,Nx,Ny,Nz)] = Ind_1(x,y,z,Ni+1,comp,Nx,Ny,Nz);
-                    }
-                }
-            }
-        }
-        ierr = ISCreateGeneral(PETSC_COMM_WORLD, Nz*Nx * Ny * (Nc - 1), al_ind, PETSC_COPY_VALUES, &state_vars->al_ind);
-        CHKERRQ(ierr);
-        free(al_ind);
-    }
-    else{
-        state_vars->alpha = (PetscReal*)malloc(sizeof(PetscReal)*Nx*Ny*Nz*(Nc-1));
-    }
+
+    state_vars->alpha = (PetscReal*)malloc(sizeof(PetscReal)*Nx*Ny*Nz*(Nc-1));
+
     extract_subarray(state,state_vars);
     return ierr;
 }
@@ -95,12 +80,6 @@ PetscErrorCode extract_subarray(Vec state,struct SimState *state_vars)
 
     ierr = VecGetSubVector(state,state_vars->phi_ind,&state_vars->phi_vec); CHKERRQ(ierr);
     ierr = VecGetArray(state_vars->phi_vec,&state_vars->phi); CHKERRQ(ierr);
-    if(!separate_vol) {
-        ierr = VecGetSubVector(state, state_vars->al_ind, &state_vars->al_vec);
-        CHKERRQ(ierr);
-        ierr = VecGetArray(state_vars->al_vec, &state_vars->alpha);
-        CHKERRQ(ierr);
-    }
     if(Profiling_on) {
         PetscLogEventEnd(event[2], 0, 0, 0, 0);
     }
@@ -122,13 +101,6 @@ PetscErrorCode restore_subarray(Vec state,struct SimState *state_vars)
     ierr = VecRestoreArray(state_vars->phi_vec,&state_vars->phi); CHKERRQ(ierr);
     ierr = VecRestoreSubVector(state,state_vars->phi_ind,&state_vars->phi_vec); CHKERRQ(ierr);
 
-    if(!separate_vol) {
-        ierr = VecRestoreArray(state_vars->al_vec, &state_vars->alpha);
-        CHKERRQ(ierr);
-        ierr = VecRestoreSubVector(state, state_vars->al_ind, &state_vars->al_vec);
-        CHKERRQ(ierr);
-        state_vars->alpha = NULL;
-    }
 
     state_vars->c = NULL;
     state_vars->phi = NULL;
@@ -150,12 +122,6 @@ PetscErrorCode extract_subarray_Read(Vec state,struct SimState *state_vars)
 
     ierr = VecGetSubVector(state,state_vars->phi_ind,&state_vars->phi_vec); CHKERRQ(ierr);
     ierr = VecGetArrayRead(state_vars->phi_vec,&state_vars->phi); CHKERRQ(ierr);
-    if(!separate_vol) {
-        ierr = VecGetSubVector(state, state_vars->al_ind, &state_vars->al_vec);
-        CHKERRQ(ierr);
-        ierr = VecGetArrayRead(state_vars->al_vec, &state_vars->alpha);
-        CHKERRQ(ierr);
-    }
     if(Profiling_on) {
         PetscLogEventEnd(event[2], 0, 0, 0, 0);
     }
@@ -176,14 +142,6 @@ PetscErrorCode restore_subarray_Read(Vec state,struct SimState *state_vars)
 
     ierr = VecRestoreArrayRead(state_vars->phi_vec,&state_vars->phi); CHKERRQ(ierr);
     ierr = VecRestoreSubVector(state,state_vars->phi_ind,&state_vars->phi_vec); CHKERRQ(ierr);
-
-    if(!separate_vol) {
-        ierr = VecRestoreArrayRead(state_vars->al_vec, &state_vars->alpha);
-        CHKERRQ(ierr);
-        ierr = VecRestoreSubVector(state, state_vars->al_ind, &state_vars->al_vec);
-        CHKERRQ(ierr);
-        state_vars->alpha = NULL;
-    }
 
     state_vars->c = NULL;
     state_vars->phi = NULL;
@@ -334,9 +292,7 @@ void parameter_dependence(struct AppCtx *user)
 {
     PetscReal soma,soma_width, dendrite,dendrite_width;
 
-//    soma=3;soma_width=1;
-//    dendrite=1; dendrite_width=2;
-//    soma = 0.1499;soma_width = 0.0301;
+
     soma = 0.039; soma_width = 0.00301;
     PetscReal dz = user->dz;
 
@@ -366,11 +322,6 @@ void parameter_dependence(struct AppCtx *user)
         for (y = 0; y < Ny; y++) {
             for (x = 0; x < Nx; x++){
 
-//                con_vars->pNaT[xy_index(x,y,z,Nx,Ny)] = basepNaT*(z==3);
-//                con_vars->pKA[xy_index(x,y,z,Nx,Ny)] = basepKA*(z==3);
-//                con_vars->pNMDA[xy_index(x,y,z,Nx,Ny)] = basepNMDA*(z<2);
-//                con_vars->pNaP[xy_index(x,y,z,Nx,Ny)] = basepNaP*(z<4);
-//                con_vars->pKDR[xy_index(x,y,z,Nx,Ny)] = basepKDR*(z<4);
 
 //                con_vars->pNaT[xy_index(x,y,z,Nx,Ny)] = basepNaT;
 //                con_vars->pKA[xy_index(x,y,z,Nx,Ny)] = basepKA;
@@ -393,7 +344,7 @@ void parameter_dependence(struct AppCtx *user)
 
 
                 // Modification of neuron size
-                     cmt = 0.75e-3;            //membrane capacitance in mF/cm^2
+                cmt = 0.75e-3;            //membrane capacitance in mF/cm^2
 
                 if(z*dz>=soma && z*dz<soma+soma_width){
                     // In the soma
@@ -427,15 +378,11 @@ void parameter_dependence(struct AppCtx *user)
                     con_vars->DNeuronScale[xy_index(x,y,z,Nx,Ny,Nz)*3] = DNeuronMult[0]*0; //x-direction Neurons
                     con_vars->DNeuronScale[xy_index(x,y,z,Nx,Ny,Nz)*3+1] = DNeuronMult[1]*0; //y-direction Neurons
 
-                    if(z==0){
-                        //          con_vars->DNeuronScale[xy_index(x,y,0,Nx,Ny)*3] = DNeuronMult[0]*0.5; //x-direction Neurons
-                        //         con_vars->DNeuronScale[xy_index(x,y,0,Nx,Ny)*3+1] = DNeuronMult[1]*0.5; //y-direction Neurons
 
-                    }
                 } else{
                     //Below the soma
                     sa = 10.324e-5;          //membrane area in cm^2
-//                    sa = ((1.586e-5-10.324e-5)/(soma+soma_width-Lz))*(z*dz-Lz)+10.324e-5;          //membrane area in cm^2
+//                    sa = ((1.586e-5-10.324e-5)/(soma+soma_width-Lz))*(z*dz-Lz)+10.324e-5; //Linear decrease in sa
                     voli = 1.762e-9;         //intracellular volume in cm^3
                     vole = (0.15*voli);
                     con_vars->pNaT[xy_index(x,y,z,Nx,Ny,Nz)] = basepNaT*0;
@@ -452,12 +399,14 @@ void parameter_dependence(struct AppCtx *user)
                 }
 
 
-                    con_vars->ell[xy_index(x,y,z,Nx,Ny,Nz)] = ((voli+vole)/sa);    //average membrane separation in cm
-                     con_vars->cm[al_index(x,y,z,0,Nx,Ny,Nz)] = cmt*RTFC/FC/con_vars->ell[xy_index(x,y,z,Nx,Ny,Nz)];
-//                sa = 1.586e-5;          //membrane area in cm^2
-//                voli = 2.16e-9;         //intracellular volume in cm^3
-//                vole = (0.15*voli);
-                     con_vars->cm[al_index(x,y,z,1,Nx,Ny,Nz)] = cmt*RTFC/FC/((voli+vole)/sa);//con_vars->ell[xy_index(x,y,z,Nx,Ny)];     //membrane capacitance in mF/cm^2 converted to mmol/cm^3
+                con_vars->ell[xy_index(x,y,z,Nx,Ny,Nz)] = ((voli+vole)/sa);    //average membrane separation in cm
+                con_vars->cm[al_index(x,y,z,0,Nx,Ny,Nz)] = cmt*RTFC/FC/con_vars->ell[xy_index(x,y,z,Nx,Ny,Nz)];
+
+                //Set Glia to soma compartment size
+                sa = 1.586e-5;          //membrane area in cm^2
+                voli = 2.16e-9;         //intracellular volume in cm^3
+                vole = (0.15*voli);
+                con_vars->cm[al_index(x,y,z,1,Nx,Ny,Nz)] = cmt*RTFC/FC/((voli+vole)/sa);//con_vars->ell[xy_index(x,y,z,Nx,Ny)];     //membrane capacitance in mF/cm^2 converted to mmol/cm^3
             }
         }
     }
@@ -478,9 +427,9 @@ void parameter_dependence(struct AppCtx *user)
     con_vars->pNaLeak = (PetscReal*)malloc(sizeof(PetscReal)*Nx*Ny*Nz);
     con_vars->pNaLeakg = (PetscReal*)malloc(sizeof(PetscReal)*Nx*Ny*Nz);
 
-//    con_vars->zo = (PetscReal*)malloc(sizeof(PetscReal)*Nc*Nx*Ny*Nz);
-//    con_vars->ao = (PetscReal*)malloc(sizeof(PetscReal)*Nc*Nx*Ny*Nz);
-//    con_vars->zeta1 = (PetscReal*)malloc(sizeof(PetscReal)*(Nc-1)*Nx*Ny*Nz);
+    con_vars->zo = (PetscReal*)malloc(sizeof(PetscReal)*Nc*Nx*Ny*Nz);
+    con_vars->ao = (PetscReal*)malloc(sizeof(PetscReal)*Nc*Nx*Ny*Nz);
+    con_vars->zeta1 = (PetscReal*)malloc(sizeof(PetscReal)*(Nc-1)*Nx*Ny*Nz);
 
 
 }
