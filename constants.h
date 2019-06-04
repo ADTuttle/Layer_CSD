@@ -15,7 +15,7 @@
 #define trecordstep 0.5 //determines how often to record
 #define save_one_var 0 //Instead of saving all 14 vars, save just 1 (specified in write_data)
 #define start_at_steady 1 //Start at steady state?
-#define spatially_uniform  1 //if true, all initial values and parameters are spatially uniform
+#define spatially_uniform  0 //if true, all initial values and parameters are spatially uniform
 
 
 
